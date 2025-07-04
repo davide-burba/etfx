@@ -1,10 +1,7 @@
 name: Update ETF Data and Deploy
 
 on:
-  # Run on push and pull request to main branch
   push:
-    branches: [main]
-  pull_request:
     branches: [main]
 
   # Run on schedule - every 6 hours daily
