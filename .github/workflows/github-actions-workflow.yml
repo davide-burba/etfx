@@ -1,0 +1,71 @@
+name: Update ETF Data and Deploy
+
+on:
+  # Run on push and pull request to main branch
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+  # Run on schedule - every 6 hours daily
+  schedule:
+    # Runs every day at 2am, 8am, 2pm, 8pm UTC
+    - cron: "0 2,8,14,20 * * *"
+
+  # Allow manual trigger
+  workflow_dispatch:
+
+jobs:
+  update-and-deploy:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Fetch and process ETF data
+        run: |
+          uv run main.py
+        env:
+          PYTHONUNBUFFERED: 1
+
+      - name: Commit data files
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add data/
+          git diff --staged --quiet || git commit -m "Update ETF data - $(date +'%Y-%m-%d %H:%M:%S')"
+
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ github.ref }}
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v3
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v2
+        with:
+          path: "."
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
